@@ -1,0 +1,797 @@
+---
+title: "Case Study 2"
+author:
+  - Premus Luka - 12552143
+  - Cam Le - 12551211
+  - García Barrada Francisco - 12551603
+date: "2026-05-01"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+*The  .Rmd* **and** *.html (or .pdf) should be uploaded in TUWEL by the deadline. Refrain from using explanatory comments in the R code chunks but write them as text instead. Points will be deducted if the submitted file is not in a decent form.*
+
+
+
+
+
+
+**DISCLAIMER**: In case students did not contribute equally, include a disclaimer stating what each student's contribution was.
+
+
+The CIA World Factbook provides intelligence on various aspects of 266 world entities, including history, people, government, economy, energy, geography, environment, communications, transportation, military, terrorism, and transnational issues. This case study involves analyzing world data from 2020, focusing on:
+
+- **Education Expenditure (% of GDP)**
+- **Youth Unemployment Rate (15-24 years)**
+- **Net Migration Rate** (difference between the number of people entering and leaving a country per 1,000 persons)
+
+The data was sourced from the [CIA World Factbook Archives](https://www.cia.gov/the-world-factbook/about/archives/). You are required to use `dplyr` for data manipulation, while any package can be used for importing data.
+
+# AI Usage:
+```{r}
+df_ai_usage <- data.frame(
+  AI_usage = c("Debugging","Improving existing code","Layout and formatting","Text correction","Understanding concepts"),
+  a = c(NA, "little", NA, NA, NA),
+  b = c(NA, NA, NA, NA, NA),
+  c = c(NA, NA, NA, "little", NA),
+  d = c(NA, NA, NA, "little", NA),
+  e = c(NA, "little", NA, NA, NA),
+  f = c(NA, NA, NA, NA, NA),
+  g = c(NA, "little", NA, NA, NA),
+  h = c(NA, NA, "little", NA, "little"),
+  i = c(NA, NA, NA, NA, NA)
+)
+df_ai_usage
+```
+
+
+# Tasks:
+
+## a. Data Import and Cleaning
+
+Load the following datasets from TUWEL and ensure that missing values are handled correctly and column names are clear. Each dataset should ultimately contain only two columns: **country** and the respective variable. Note that some data sets also contain information on the year when the value was last updated.
+
+  
+  * `rawdata_369.txt` which contains the (estimated)  public expenditure on education as a percent of GDP. *Pay attention! The delimiter is 2 or more white spaces (one space would not work as it would separate country names which contain a space); you have to skip the first two lines*. 
+  
+  * `rawdata_373.csv` which contains the (estimated) youth unemployment rate (15-24) per country
+  
+  * `rawdata_347.txt`  which contains (estimated) net migration rate per country.
+
+
+### Function definition
+As the format of 2 files `rawdata_369.txt` and `rawdata_347.txt` are quite similar then we decide to define a function that read content of 2 files line by line consider each line as a small dataframes. After that, we bind them together to form a single datframe which has 2 columns: **country** and a respective variable. Note: we split each line on 2 or more consecutive whitespace characters to get the values based on the provided guidelines.
+
+``` {r message=FALSE}
+library(dplyr)
+library(readr)
+library(tidyr)
+library(readxl)
+
+read_txt_to_df <- function(file_path, col_name){
+  # Read line by line, [-(1:2)] removes the first 2 lines
+  lines <- readLines(file_path)[-(1:2)]
+
+  # Remove empty trimmed line
+  lines <- lines[nchar(trimws(lines)) > 0]
+
+  # Split each line on 2 or more consecutive whitespace characters
+  split_lines <- strsplit(lines, "\\s{2,}")
+
+  # Create a list of named character vectors
+  rows <- lapply(
+    split_lines,
+    function(row) {
+      df <- data.frame(
+        country = row[2],
+        value = row[3],
+        stringsAsFactors = FALSE
+      )
+      return(df)
+    }
+  )
+
+  # Bind them together to create a dataframe
+  rows_list <- bind_rows(rows)
+
+  # Type cast and keep only necessary columns (tibble)
+  df <- rows_list %>%
+    mutate(
+      country = trimws(country),
+      !!col_name := as.numeric(value),
+      .keep = "none",
+    )
+
+  return(df)
+}
+
+
+```
+
+### Read `rawdata_369.txt`
+```{r  message=FALSE}
+df_edu <- read_txt_to_df("rawdata_369.txt", "education_expenditure")
+head(df_edu)
+```
+
+### Read rawdata_373.csv
+We use `read.csv` to read the csv file then cast column type to the desired type.
+
+```{r data-import-cleaning, message=FALSE}
+# Read csv into a dataframe then cast to tibble for coding consistancy
+unemp_raw <- read.csv(
+  "rawdata_373.csv",
+  stringsAsFactors = FALSE,
+  strip.white = TRUE,
+) |> as_tibble()
+
+# Keep only necessary columns
+df_unemp <- unemp_raw %>%
+  mutate(
+    country = trimws(country_name),
+    youth_unempl_rate = as.numeric(youth_unempl_rate),
+    .keep = "none",
+  )
+
+head(df_unemp)
+```
+
+### Read `rawdata_347.txt`
+```{r, message=FALSE}
+df_mig <- read_txt_to_df("rawdata_347.txt", "net_migration")
+head(df_mig)
+```
+
+The three cleaned data frames are:
+
+- `df_edu` — country & `education_expenditure` (public expenditure on education as % of GDP) & `year` (when the value was last updated)
+- `df_unemp` — country & `youth_unempl_rate` (youth unemployment rate, 15–24)
+- `df_mig` — country & `net_migration` (net migration rate per 1 000 persons)
+
+## b. Merging Raw Data
+
+Merge the datasets using `dplyr` on a unique key and retain the union of all observations.
+
+- What key are you using for merging?
+- Return the dimensions of the merged dataset.
+
+
+### Merge datasets
+
+The merging key is **`country`** — it is the only column shared across all three data frames and uniquely identifies each observation. We use `full_join()` to retain the union of all observations (i.e., countries that appear in any of the three datasets are kept, with `NA` where a value is missing).
+
+```{r merge-data}
+df_merged <- df_edu %>%
+  full_join(df_unemp, by = "country") %>%
+  full_join(df_mig,   by = "country")
+head(df_merged)
+```
+
+### Dimension checking
+```{r}
+cat("df_edu 's shape: ", dim(df_edu))
+cat("df_unemp 's shape: ", dim(df_unemp))
+cat("df_mid 's shape: ", dim(df_mig))
+
+dim(df_merged)
+```
+
+## c. Enriching Data with Income Classification
+
+Obtain country income classification (low, lower-middle, upper-middle, high) from the [World Bank](https://datahelpdesk.worldbank.org/knowledgebase/articles/906519) and merge it with the dataset.
+
+- Identify common variables between datasets. Can they be used for merging? Why or why not?
+
+- Since ISO codes are standardized, download and use the [CIA country data codes](https://www.cia.gov/the-world-factbook/references/country-data-codes/) for merging. Make sure you are not losing any of the countries in your original data set when merging.
+
+### Solution description
+
+Both our merged dataset and the World Bank data contain **country names**, so this is the common variable. However, country names **cannot be reliably used for merging** because different sources use different naming conventions (e.g., "Turkey" in our data vs. "Türkiye" in the World Bank data, "Macedonia" vs. "North Macedonia", "Korea, South" vs. "Korea, Rep.", etc.). Even small discrepancies in spelling, punctuation or formatting would cause observations to be lost.
+
+Instead, we use **standardised ISO 3-letter country codes** as a bridge. The CIA Country Data Codes file maps CIA country names (which match our data) to GENC/ISO codes, and the World Bank data contains ISO3 codes — so we can join the two on that shared, unambiguous key.
+
+We also manually impute country code for some countries as their names are presented differently in data file from Word Bank.
+
+### Download country income classification  data
+We download file if it does not exist.
+
+```{r income-classification, message=FALSE, warning=FALSE}
+
+wb_url <- "https://ddh-openapi.worldbank.org/resources/DR0095333/download"
+wb_file <- "wb_income_class.xlsx"
+
+# Only download file if we haven't done it.
+if (!file.exists(wb_file)) {
+  download.file(wb_url, wb_file, mode = "wb")
+}
+
+
+wb_raw <- read_excel(wb_file)
+head(wb_raw)
+
+# Rename column and filter rows with no income status
+df_wb <- wb_raw %>%
+  select(iso3 = Code, wb_country = Economy, income_status = `Income group`) %>%
+  filter(!is.na(income_status) & income_status != "")
+
+head(df_wb)
+```
+
+### Load country code data
+We have already downloaded a csv file containing information about the country code so we only need to load and use it.
+
+```{r}
+# Load country code from downloaded csv file
+cia_codes <- read.csv(
+  "Country Data Codes.csv",
+  stringsAsFactors = FALSE,
+  strip.white = TRUE,
+)
+
+df_cia <- cia_codes %>%
+  transmute(
+    country = trimws(Name),
+    iso3    = trimws(GENC),
+  ) %>%
+  filter(iso3 != "-" & iso3 != "")
+
+head(df_cia)
+```
+
+### Merge datasets
+We merge loaded dataframes to enrich information for merged dataframe in question `b`. Now, the dataframe will have country code information. Then we manually impute country code for some countries as there exists a difference in the naming of Word Bank, our dataset and country code dataset.  
+
+```{r}
+# Merge dataframes so that df_merge has column representing country code now
+df_merged_iso <- df_merged %>%
+  left_join(df_cia, by = "country")
+
+# There are countries without an ISO code
+no_iso <- df_merged_iso %>% filter(is.na(iso3))
+cat("Countries without an ISO code after CIA join:\n")
+print(no_iso$country)
+
+# Manually add ISO country code for Turkey (Turkiye) and North Macedonia
+df_merged_iso <- df_merged_iso %>%
+  mutate(iso3 = case_when(
+     country == "Turkey" ~ "TUR",
+     country %in% c("Macedonia") ~ "MKD",
+     country == "Kosovo" ~ "XKX",
+     TRUE ~ iso3
+   )
+  )
+
+# Use left join to get income status of each country
+df_merged_income <- df_merged_iso %>%
+  left_join(df_wb %>% select(iso3, income_status), by = "iso3")
+head(df_merged_income)
+
+```
+
+We check number of rows to ensure there is no mismatch during the joining process. There are some countries without income classification status info.
+
+```{r}
+cat("Rows in df_merged and df_merged_income:", nrow(df_merged), " and ",  nrow(df_merged_income))
+
+no_income <- df_merged_income %>% filter(is.na(income_status))
+cat("Countries without income classification:\n")
+print(no_income$country)
+```
+
+
+
+## d.  Adding Geographical Information
+
+Introduce continent and subcontinent (or region) data for each country.
+
+- Find and download an appropriate online resource.
+- Merge this information into the dataset, naming the final dataset `df_vars`. Make sure you are not losing any of the countries in your original data set when merging.
+
+### Mere dataframes to enrich geographical information
+We use the [ISO-3166 Countries with Regional Codes](https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes) dataset, which is based on the **UN Statistics Division M49 standard** and provides `region` (continent) and `sub-region` for each country, keyed by ISO 3-letter codes (`alpha-3`). We `left join` our `df_merged_income` from previous step with the new dataframe to  add information about the continent and sub-region. We also manually impute missing contient/subcontinent value for some rows (countries).
+
+```{r geo-info, message=FALSE, warning=FALSE}
+library(tidyr)
+
+# Load data (csv file) from github
+geo_url <- "https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.csv"
+geo_raw <- read_csv(geo_url)
+
+df_geo <- geo_raw %>%
+  transmute(iso3 = trimws(`alpha-3`),
+            continent = trimws(region),
+            subregion = trimws(`sub-region`)) %>%
+  filter(iso3 != "" & continent != "")   # drop entries without codes or region
+
+head(df_geo)
+
+# Merge using country code to get information about the continent and subregion
+df_vars <- df_merged_income %>%
+  left_join(df_geo, by = "iso3")
+
+# Check there are no lost countries 
+cat("Rows in df_merged and df_merged_income:", nrow(df_merged), " and ",  nrow(df_merged_income))
+```
+
+There exists some countries with geo info.
+```{r}
+# Get countries where there is no information for them
+no_geo <- df_vars %>% filter(is.na(continent))
+cat("Countries without continent info:\n")
+print(no_geo$country)
+```
+
+### Impute missing value
+We use geography knowledge to impute missing value to ensure data correctness.
+```{r}
+# Manually handle missing value using our knowledge
+df_vars <- df_vars %>%
+  mutate(
+    continent = case_when(
+      country %in% c("Gaza Strip", "West Bank", "Taiwan") & is.na(continent) ~ "Asia",
+      country == "Kosovo" & is.na(continent) ~ "Europe",
+      TRUE ~ continent
+    ),
+    subregion = case_when(
+      country %in% c("Gaza Strip", "West Bank") & is.na(subregion) ~ "Western Asia",
+      country == "Taiwan" & is.na(subregion) ~ "Eastern Asia",
+      country == "Kosovo" & is.na(subregion) ~ "Southern Europe",
+      TRUE ~ subregion
+    )
+  )
+no_geo <- df_vars %>% filter(is.na(continent))
+cat("Countries without continent info: ", no_geo$country)
+
+head(df_vars)
+str(df_vars)
+```
+
+
+
+## e. Data Tidiness and Summary Statistics
+
+- Evaluate the tidiness of `df_vars`
+(observational units, variables, fixed vs. measured variables).
+Make adjustments to tidy the data, if necessary.
+
+- Create a frequency table for the income status variable and briefly interpret the results.
+
+- Analyze the distribution of income status across continents by computing absolute and relative frequencies. Comment on the findings.
+
+- Using the distribution of income status across continents, identify which countries are the only ones in their income group across the continent. Discuss briefly.
+
+### Tidiness evaluation:
+
+- **Observational unit**: Each row represents one country — this is consistent and there is only one type of observational unit.
+- **Variables**: Each column represents a single variable (country name, ISO code, education expenditure, youth unemployment_rate, net migration, income status, continent, sub-region).
+- **Fixed vs measured variables**: `country`, `iso3`, `income_status`, `continent`, and `subregion` are **fixed** (classifying) variables; `education_expenditure`, `youth_unempl_rate`, and `net_migration` are **measured** variables.
+- The dataset is already in tidy (long) form — each variable has its own column and each observation its own row. No reshaping is needed.
+
+### Create a frequency table for the income status variable and briefly interpret the results.
+
+The frequency table shows that most countries in the dataset are classified as high income (86 countries, 40.2%). The next largest groups are upper middle income (54 countries, 25.2%) and lower middle income (49 countries, 22.9%). low income countries make up the smallest share (25 countries, 11.7%).
+
+```{r tidiness-and-frequencies}
+
+freq_income <- df_vars %>%
+  filter(!is.na(income_status)) %>%
+  count(income_status, name = "n") %>%
+  mutate(rel_freq = round(n / sum(n), 3))
+
+freq_income
+```
+
+
+### Analyze the distribution of income status across continents by computing absolute and relative frequencies. Comment on the findings.
+
+The distribution of income status varies strongly across continents. Africa is dominated by Lower middle income (43.4%) and Low income (39.6%) countries, while High income countries are very rare (1.9%). In contrast, Europe consists mostly of High income countries (80.9%), with the remaining 19.1% classified as Upper middle income.
+
+In the Americas, the majority of countries are High income (51.1%), followed by Upper middle income (40.0%), while Lower middle income countries are relatively few (8.9%). Asia shows the most balanced distribution, with countries spread across all income groups, though Lower middle income (34.0%) and High income (30.0%) are the largest shares.
+
+Finally, Oceania also has a relatively mixed distribution, but High income countries (47.4%) make up the largest group.
+
+```{r}
+cross_tab <- df_vars %>%
+  filter(!is.na(income_status) & !is.na(continent)) %>%
+  count(continent, income_status) %>%
+  group_by(continent) %>%
+  mutate(rel_freq = round(n / sum(n), 3)) %>%
+  ungroup()
+
+cross_tab
+```
+
+
+### Identify which countries are the only ones in their income group across the continent
+
+We present 2 ways of finding countries which are the only ones in their income group across the continent.
+
+- First approach is using visualization and figure out with our perception.
+- Second approach is constructing a dataframe containing statistics related to `income_status` and `continent`.
+
+The country `Seychelles` is the only representative of High income group in Africa. This can happen when an income level is very rare in a particular region (e.g., a single high-income country in a predominantly low-income continent, or vice versa). These cases are worth nothing because they may behave as outliers when we compute summary statistics grouped by continent and income.
+
+
+```{r}
+library(ggplot2)
+
+# Identify via visualization
+ggplot(cross_tab, aes(x = income_status, y = n, fill = income_status)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ continent, scales = "free_y") +
+  coord_flip() +
+  labs(x = "Income status", y = "Count") +
+  theme_minimal()
+
+# Identify via statistics
+cross_wide <- cross_tab %>%
+  select(-rel_freq) %>%
+  pivot_wider(names_from = income_status, values_from = n, values_fill = 0) %>%
+  arrange(`High income`)
+
+cross_wide
+
+# Get the country
+unique_in_group <- df_vars %>%
+  filter(!is.na(income_status) & !is.na(continent)) %>%
+  group_by(continent, income_status) %>%
+  filter(n() == 1) %>% 
+  ungroup() %>%
+  select(country, continent, income_status)
+
+unique_in_group
+```
+
+
+
+## f. Further Summary Statistics and Insights
+
+- Create a table of average (mean and median) values for expenditure, youth unemployment rate and net migration rate separated into income status. Make sure that in the output, the ordering of the income classes is proper (i.e., L, LM, UM, H or the other way around). Briefly comment the results and any differences between the mean and median. 
+
+- Look at the standard deviation and the interquartile range of the variables per income status instead of the location statistics above. Do you gain additional insights? Briefly comment the results. 
+
+- Extend the analysis of the statistics median and IQR  to **each income status and continent combination**. Play around with displaying the resulting table. Use `pivot_longer()` and/or 
+`pivot_wider()` to generate different outputs. 
+Discuss the results as well as the readability of the different tables.
+ 
+- Identify countries performing well in terms of both **youth unemployment** and **net migration rate** (top 25% in net migration and bottom 25% in youth unemployment within their continent).
+
+### 1st question
+```{r summary-stats-f, message=FALSE}
+
+income_levels <- c("Low income", "Lower middle income",
+                   "Upper middle income", "High income")
+df_vars <- df_vars %>%
+  mutate(income_status = factor(income_status, levels = income_levels))
+
+# --- Mean and Median by income status ---
+location_stats <- df_vars %>%
+  filter(!is.na(income_status)) %>%
+  group_by(income_status) %>%
+  summarise(
+    mean_edu = round(mean(education_expenditure, na.rm = TRUE), 2),
+    median_edu = median(education_expenditure, na.rm = TRUE),
+    mean_unempl = round(mean(youth_unempl_rate, na.rm = TRUE), 2),
+    median_unempl = median(youth_unempl_rate, na.rm = TRUE),
+    mean_mig = round(mean(net_migration, na.rm = TRUE), 2),
+    median_mig = median(net_migration, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+location_stats
+```
+
+Differences between mean and median indicate **skewness**: when the mean is substantially higher (or lower) than the median, a few extreme values are pulling the average.
+
+- `Education Expenditure`: Mean and median values are relatively close across all income groups, suggesting that education spending is fairly symmetrically distributed. However, in most groups the mean is slightly higher than the median, indicating a small right-skew caused by some countries with higher spending.
+- `Unemployment Rate`: For all income groups, the mean unemployment rate is noticeably higher than the median. This suggests a right-skewed distribution, meaning that a few countries with very high unemployment increase the average.
+- `Migration`: Migration shows larger differences between mean and median (percentage as a view point), especially in lower and upper middle-income groups where the mean is much more negative than the median. This indicates the presence of some countries with very strong negative migration balances (outliers). In contrast, high-income countries show positive migration with mean and median values close together, indicating more balanced migration patterns.
+
+
+### 2nd question
+```{r dispersion-stats}
+
+dispersion_stats <- df_vars %>%
+  filter(!is.na(income_status)) %>%
+  group_by(income_status) %>%
+  summarise(
+    sd_edu = sd(education_expenditure, na.rm = TRUE),
+    iqr_edu = IQR(education_expenditure, na.rm = TRUE),
+    sd_unempl = sd(youth_unempl_rate, na.rm = TRUE),
+    iqr_unempl = IQR(youth_unempl_rate, na.rm = TRUE),
+    sd_mig = sd(net_migration, na.rm = TRUE),
+    iqr_mig = IQR(net_migration, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+dispersion_stats
+```
+Comparing SD and IQR reveals whether the spread is driven by outliers (large SD relative to IQR) or is more uniform. A high SD / IQR ratio signals heavy tails or extreme values in that income group.
+
+For education expenditure, SD and IQR are relatively similar across all income groups, suggesting a fairly symmetric distribution without strong outliers. Lower middle income countries exhibit slightly higher variability, indicating more heterogeneity in education spending.
+
+For youth unemployment, SD and IQR are also of comparable magnitude, indicating substantial dispersion but no clear evidence of extreme outliers. Upper middle income countries show the highest IQR, suggesting greater variability within the central 50% of observations.
+
+In contrast, net migration displays a markedly different pattern. In both low-income and especially lower middle income countries, the SD is substantially larger than the IQR (e.g., 12.92 vs. 2.10), indicating the presence of strong outliers and highly skewed distributions. This suggests that a small number of countries experience extremely high positive or negative migration rates, which heavily influence the overall variability.
+
+Overall, net migration appears to be the most unevenly distributed variable, with pronounced outliers driving differences between income groups, whereas education expenditure and unemployment are more consistently distributed.
+
+```{r}
+ggplot(filter(df_vars, income_status != "."), 
+       aes(x = income_status, y = net_migration)) +
+  geom_boxplot(
+    outlier.shape = 21,   # permite fill + borde
+    outlier.fill = "white",
+    outlier.color = "black"
+  ) +
+  labs(
+    title = "Net Migration Rate by Income Status",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
+```
+
+The boxplot of net migration confirms the presence of strong outliers, particularly in lower middle income countries. This is consistent with the large gap between the standard deviation and IQR observed earlier, indicating a highly skewed distribution driven by a few extreme values.
+
+### 3rd question
+```{r median-iqr-by-income-continent}
+
+med_iqr <- df_vars %>%
+  filter(!is.na(income_status) & !is.na(continent)) %>%
+  group_by(income_status, continent) %>%
+  summarise(
+    median_edu = median(education_expenditure, na.rm = TRUE),
+    iqr_edu = IQR(education_expenditure, na.rm = TRUE),
+    median_unempl = median(youth_unempl_rate, na.rm = TRUE),
+    iqr_unempl = IQR(youth_unempl_rate, na.rm = TRUE),
+    median_mig = median(net_migration, na.rm = TRUE),
+    iqr_mig = IQR(net_migration, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+med_iqr
+
+med_iqr_long <- med_iqr %>%
+  pivot_longer(cols = -c(income_status, continent),
+               names_to = "variable", values_to = "value")
+
+head(med_iqr_long, 20)
+
+
+med_iqr_wide <- med_iqr_long %>%
+  pivot_wider(names_from = continent, values_from = value)
+
+med_iqr_wide
+```
+
+The **long format** (Display 2) has one row per statistic-group combination, making it ideal for further computation or plotting but hard to scan visually. The **wide format** (Display 3) spreads continents across columns, which is much more readable for comparison across continents within the same income group and variable, but the table can become very wide with many continents. Moreover, in case we want to make the dataframe "wider" using other columns like `variable` for example then the dataframe may becomes messy and hard to interpret.
+
+### 4th question
+```{r top-performers}
+# --- Countries performing well on both youth unemployment AND net migration ---
+# Within each continent: top 25% net migration AND bottom 25% youth unemployment
+top_performers <- df_vars %>%
+  filter(!is.na(youth_unempl_rate) & !is.na(net_migration) & !is.na(continent)) %>%
+  group_by(continent) %>%
+  mutate(
+    mig_q75 = quantile(net_migration, 0.75, na.rm = TRUE),
+    unempl_q25 = quantile(youth_unempl_rate, 0.25, na.rm = TRUE)
+  ) %>%
+  filter(net_migration >= mig_q75 & youth_unempl_rate <= unempl_q25) %>%
+  ungroup() %>%
+  select(country, continent, income_status, youth_unempl_rate, net_migration) %>%
+  arrange(continent, youth_unempl_rate)
+
+top_performers
+```
+
+These countries combine low youth unemployment with high net migration — suggesting attractive labour markets that both employ their young population effectively and attract immigrants.
+
+## g. Conditional Probabilities
+
+Estimate the following based on the observed frequencies in the data:
+
+- What is the (posterior or conditional) probability that a European country belongs to the high income group? What is the prior probability that a country belongs to the high income group?
+
+- Given a country has high youth unemployment (above %25), what is the probability that it also has negative net migration?
+
+### 1st question
+
+The conditional probability of belonging to the high income group is considerably higher for European countries than the overall (prior) probability, reflecting the concentration of wealthy economies in Europe.
+
+```{r conditional-probs}
+
+df_prob <- df_vars %>% filter(!is.na(income_status) & !is.na(continent))
+
+# probability that a European country belongs to the high income group
+n_europe <- df_prob %>%
+  filter(continent == "Europe") %>%
+  nrow()
+
+n_europe_high <- df_prob %>%
+  filter(continent == "Europe" & income_status == "High income") %>%
+  nrow()
+
+p_high_given_europe <- n_europe_high / n_europe
+cat("P(High income | Europe) =", round(p_high_given_europe, 3), "\n")
+
+
+n_total <- nrow(df_prob)
+n_high  <- df_prob %>%
+  filter(income_status == "High income") %>%
+  nrow()
+
+p_high <- n_high / n_total
+cat("P(High income) =", round(p_high, 3), "\n")
+```
+
+The probability that a country is high income more than doubles when conditioning on being in Europe (0.826 vs 0.404). This indicates a strong association between geographic location and economic status, reflecting the concentration of developed economies in Europe.
+
+### 2nd question
+
+A high probability here suggests that countries struggling with youth unemployment also tend to experience net emigration — young people leave in search of better opportunities.
+
+```{r conditional-prob-unempl-mig}
+# --- P(negative net migration | youth unemployment > 25%) ---
+df_prob2 <- df_vars %>%
+  filter(!is.na(youth_unempl_rate) & !is.na(net_migration))
+
+high_unempl <- df_prob2 %>%
+  filter(youth_unempl_rate > 25)
+high_unempl_neg_mig <- high_unempl %>%
+  filter(net_migration < 0)
+
+p_neg_mig_given_high_unempl <- nrow(high_unempl_neg_mig) / nrow(high_unempl)
+cat("P(net migration < 0 | youth unemployment > 25%) =",
+    round(p_neg_mig_given_high_unempl, 3), "\n")
+```
+
+A high probability here suggests that countries struggling with youth unemployment also tend to experience net emigration — young people leave in search of better opportunities.
+
+```{r}
+# baseline probability of negative migration
+p_neg_mig <- df_prob2 %>%
+  summarise(p = mean(net_migration < 0)) %>%
+  pull(p)
+
+cat("P(net migration < 0) =", round(p_neg_mig, 3), "\n")
+```
+
+```{r}
+df_plot2 <- data.frame(
+  group = c("All countries", "High youth unemployment (>25%)"),
+  probability = c(p_neg_mig, p_neg_mig_given_high_unempl)
+)
+
+ggplot(df_plot2, aes(x = group, y = probability, fill = group)) +
+  geom_col(width = 0.6) +
+  geom_text(
+    aes(label = paste0(round(probability * 100, 1), "%")),
+    vjust = -0.5,
+    size = 4
+  ) +
+  ylim(0, 1) +
+  labs(
+    title = "Probability of Negative Net Migration",
+    x = NULL,
+    y = NULL
+  ) +
+  scale_fill_manual(values = c(
+    "All countries" = "lightgray",
+    "High youth unemployment (>25%)" = "#C44E52"
+  )) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "none",
+    axis.ticks = element_blank(),
+    axis.line = element_blank(),
+    axis.text.y = element_blank()   
+  )
+```
+
+The probability of negative net migration increases from 56.9% overall to 61.2% for countries with high youth unemployment. While this shows a positive association between youth unemployment and migration, the difference is relatively small.
+
+Therefore, the relationship appears to be weak, and high youth unemployment alone does not strongly distinguish countries with negative migration. Additional factors are likely influencing migration patterns.
+
+## h. Simpson's Paradox Analysis
+
+Investigate whether an overall trend in youth unemployment rate in the high and low income groups reverses when analyzed at the continent level. E.g., does the youth unemployment rate appear lower in low-income countries overall, but higher when controlling for continent? Explain the results and possible reasons behind this paradox.
+
+```{r simpsons-paradox}
+
+df_hl <- df_vars %>%
+  filter(income_status %in% c("Low income", "High income") &
+         !is.na(youth_unempl_rate) & !is.na(continent))
+
+overall <- df_hl %>%
+  group_by(income_status) %>%
+  summarise(median_unempl = median(youth_unempl_rate, na.rm = TRUE),
+            mean_unempl   = mean(youth_unempl_rate, na.rm = TRUE),
+            n = n(),
+            .groups = "drop")
+
+cat("=== Comparison ===\n")
+overall
+
+
+by_continent <- df_hl %>%
+  group_by(continent, income_status) %>%
+  summarise(median_unempl = median(youth_unempl_rate, na.rm = TRUE),
+            mean_unempl   = mean(youth_unempl_rate, na.rm = TRUE),
+            n = n(),
+            .groups = "drop") %>%
+  arrange(continent, income_status)
+
+cat("\n=== By continent ===\n")
+by_continent
+
+# Pivot wider for easier comparison
+by_continent %>%
+  select(continent, income_status, median_unempl) %>%
+  pivot_wider(names_from = income_status, values_from = median_unempl)
+```
+
+**Simpson's Paradox** can occur here because the composition of continents differs between income groups. For instance, low-income countries are overwhelmingly located in Africa, where youth unemployment may be measured differently or where informal employment is common (leading to lower reported unemployment). High-income countries are concentrated in Europe, where youth unemployment can be notably high (e.g., Southern Europe). Overall, low-income countries may appear to have lower youth unemployment than high-income countries, but within any given continent where both groups coexist, the relationship may reverse. The paradox arises because continent acts as a confounding variable — it is associated with both income level and unemployment patterns.
+
+```{r}
+ggplot(df_hl, aes(x = income_status, y = youth_unempl_rate, fill = income_status)) +
+  geom_boxplot() +
+  facet_wrap(~ continent, ncol = 5) +
+  labs(
+    title = "Youth Unemployment by Income Group and Continent",
+    x = NULL,
+    y = NULL,
+    fill = "Income status"
+  ) +
+  theme_minimal() +
+theme(
+  panel.grid.major.x = element_blank(),
+  panel.grid.minor.x = element_blank(),
+  axis.text.x = element_blank(),
+  axis.ticks.x = element_blank(),
+  legend.position = "top",
+  strip.text = element_text(face = "bold")
+)
+```
+
+The boxplot reveals that while low-income countries appear to have lower unemployment overall, this pattern reverses within Asia, where high-income countries perform better. This visual evidence supports the presence of a Simpson-like effect driven by regional composition.
+
+Nevertheless, this comparison is based on a very small number of low-income observations, so the result should be interpreted with caution.
+
+## i. Data Export
+
+Export the final tidy dataset from e. as a **CSV** with:`;` as a separator; `.` representing missing values; no row names included.  Upload the `.csv` to TUWEL, together with the submission.
+
+```{r export-csv}
+write.table(
+  df_vars,
+  file = "df_vars.csv",
+  sep = ";",
+  na = ".",
+  row.names = FALSE,
+  quote = TRUE,
+)
+
+cat("Exported df_vars.csv —", nrow(df_vars), "rows,", ncol(df_vars), "columns\n")
+```
+
+Read the saved csv file to check.
+```{r}
+df_vars <- read.csv(
+  file = "df_vars.csv",
+  sep = ";",
+)
+colnames(df_vars)
+head(df_vars, 10)
+```
