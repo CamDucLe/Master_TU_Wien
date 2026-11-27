@@ -1,0 +1,17 @@
+[project]
+name = "infoviz-project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = "==3.12"
+dependencies = [
+    "pandas",
+    "flask",
+    "scikit-learn",
+    "numpy",
+    "kagglehub",
+    "flask-compress>=1.24",
+]
+
+[dependency-groups]
+dev = []

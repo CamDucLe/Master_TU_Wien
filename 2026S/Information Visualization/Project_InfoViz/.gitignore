@@ -1,0 +1,13 @@
+.DS_Store
+data/games.json
+
+# cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+data/*

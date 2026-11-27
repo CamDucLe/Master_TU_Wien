@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>What Does Success Look Like on Steam?</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <!-- Steam Engine Global Header -->
+    <header class="global-header">
+      <div class="header-logo">
+        <span>STEAM MARKET ANALYTICS</span>
+      </div>
+      <nav class="header-nav">
+        <a href="#" id="about-link">ABOUT</a>
+      </nav>
+    </header>
+
+    <div class="page-shell">
+      <!-- Left Sidebar (Filters and Utilities) -->
+      <aside class="sidebar">
+        <div class="sidebar-section">
+          <p class="eyebrow">Filters</p>
+          <h2>Slice the market</h2>
+          <p class="section-copy">
+            Select dimensions to dynamically filter and cross-link all visualization panels.
+          </p>
+        </div>
+
+        <div class="controls-grid">
+          <label>
+            <span>Genre</span>
+            <select id="genre-filter"></select>
+          </label>
+          <label>
+            <span>Platform</span>
+            <select id="platform-filter"></select>
+          </label>
+          <label>
+            <span>Price tier</span>
+            <select id="price-tier-filter">
+              <option value="All">All price tiers</option>
+            </select>
+          </label>
+          <label>
+            <span>Monetization</span>
+            <select id="monetization-filter">
+              <option value="All">All games</option>
+              <option value="Free">Free-to-play only</option>
+              <option value="Paid">Paid only</option>
+            </select>
+          </label>
+          <label>
+            <span>Heatmap color mode</span>
+            <select id="heatmap-mode">
+              <option value="absolute">Absolute success</option>
+              <option value="relative">Above or below mean</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- Release Year Sliders -->
+        <div class="range-block">
+          <div class="range-header">
+            <span>Release year</span>
+            <strong id="year-range-label"></strong>
+          </div>
+          <div class="range-inputs">
+            <label>
+              <span>From</span>
+              <input id="year-min" type="range" />
+            </label>
+            <label>
+              <span>To</span>
+              <input id="year-max" type="range" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Tools / Action Placeholders (Export) -->
+        <div class="sidebar-section tools-section">
+          <span>Tools</span>
+          <div class="tools-grid" style="grid-template-columns: 1fr;">
+            <button id="export-data" class="tool-button" type="button">📤 Export Data</button>
+          </div>
+        </div>
+
+        <button id="reset-filters" class="reset-button" type="button">Reset all filters</button>
+      </aside>
+
+      <!-- Main Dashboard Panel -->
+      <main class="dashboard-main">
+        <header class="hero">
+          <div>
+            <p class="eyebrow">TU Wien Information Visualization</p>
+            <h1>What Does Success Look Like on Steam?</h1>
+            <p class="hero-copy">
+              A linked D3 dashboard for exploring how price, genre, ownership, reception,
+              engagement, and release timing shape success on Steam.
+            </p>
+          </div>
+          <div class="hero-meta">
+            <div class="meta-card">
+              <span class="meta-label">Data source</span>
+              <strong id="source-mode">Loading...</strong>
+            </div>
+            <div class="meta-card">
+              <span class="meta-label">Success score</span>
+              <strong>Ownership + reviews + engagement</strong>
+            </div>
+            <div class="meta-card">
+              <span class="meta-label">Linked views</span>
+              <strong>All filters update every chart</strong>
+            </div>
+          </div>
+        </header>
+
+        <div class="interaction-toolbar">
+          <div>
+            <span class="toolbar-label">Active linked filters</span>
+            <div id="active-filters" class="active-filters"></div>
+          </div>
+        </div>
+
+        <!-- Row of Key Metrics summary cards -->
+        <section class="summary-grid reveal" id="summary-cards"></section>
+
+        <!-- Main Chart Grid Layout -->
+        <div class="chart-layout-grid">
+          
+          <!-- ROW 1: Scatter Chart + Weighting Panel -->
+          <div class="grid-row row-1-grid">
+            <article class="chart-card scatter-card">
+              <div class="chart-header">
+                <div>
+                  <p class="eyebrow">Overview</p>
+                  <h3>Price vs. reception scatter</h3>
+                </div>
+                <p>
+                  Circle area reflects ownership and color marks primary genre. Click marks to filter.
+                </p>
+              </div>
+              <div id="scatter-chart" class="chart-surface"></div>
+            </article>
+
+            <article class="chart-card weights-card">
+              <div class="chart-header">
+                <div>
+                  <p class="eyebrow">Interactive weights</p>
+                  <h3>Success score weighting</h3>
+                </div>
+                <p>
+                  Adjust dynamic metrics to recalculate the custom Steam success score.
+                </p>
+              </div>
+              <div class="weights-panel">
+                <div class="range-header">
+                  <span>Dynamic Weights</span>
+                  <strong id="weight-summary"></strong>
+                </div>
+                <div class="weights-grid">
+                  <label>
+                    <span>Ownership Weight</span>
+                    <input id="alpha-weight" type="range" min="0.5" max="3" step="0.1" value="1" />
+                  </label>
+                  <label>
+                    <span>Review Ratio Weight</span>
+                    <input id="beta-weight" type="range" min="0.5" max="3" step="0.1" value="1" />
+                  </label>
+                  <label>
+                    <span>Playtime Weight</span>
+                    <input id="gamma-weight" type="range" min="0.5" max="3" step="0.1" value="1" />
+                  </label>
+                </div>
+                <button class="recalculate-button" type="button" onclick="document.getElementById('alpha-weight').dispatchEvent(new Event('input'))">RECALCULATE MARKET</button>
+              </div>
+            </article>
+          </div>
+
+          <!-- ROW 2: Heatmap + Timeseries -->
+          <div class="grid-row row-2-grid">
+            <article class="chart-card heatmap-card">
+              <div class="chart-header">
+                <div>
+                  <p class="eyebrow">Segment performance</p>
+                  <h3>Genre by price-tier heatmap</h3>
+                </div>
+                <p>
+                  Click a cell to focus that segment across the dashboard views.
+                </p>
+              </div>
+              <div id="heatmap-chart" class="chart-surface"></div>
+            </article>
+
+            <article class="chart-card timeseries-card">
+              <div class="chart-header">
+                <div>
+                  <p class="eyebrow">Temporal evolution</p>
+                  <h3>Success and pricing over time</h3>
+                </div>
+                <p>
+                  Line tracks success, dashed line tracks price, bars show release volume. Click a year.
+                </p>
+              </div>
+              <div id="timeseries-chart" class="chart-surface"></div>
+            </article>
+          </div>
+
+          <!-- ROW 3: Tag Bubbles + Business Model Comparison -->
+          <div class="grid-row row-3-grid">
+            <article class="chart-card tag-card">
+              <div class="chart-header">
+                <div>
+                  <p class="eyebrow">Tag landscape</p>
+                  <h3>Bubble chart of top tags</h3>
+                </div>
+                <p>
+                  Bubble size shows popularity; color shows success. Click to filter.
+                </p>
+              </div>
+              <div id="tag-chart" class="chart-surface"></div>
+            </article>
+
+            <article class="chart-card comparison-card">
+              <div class="chart-header">
+                <div>
+                  <p class="eyebrow">Business model lens</p>
+                  <h3>Free-to-play vs paid comparison</h3>
+                </div>
+                <p>
+                  Side-by-side performance review of free-to-play and paid business models.
+                </p>
+              </div>
+              <div id="comparison-panel" class="comparison-panel"></div>
+            </article>
+          </div>
+
+          <!-- ROW 4: Score Distribution + Genre Ranking -->
+          <div class="grid-row row-4-grid">
+            <article class="chart-card distribution-card">
+              <div class="chart-header">
+                <div>
+                  <p class="eyebrow">Distribution view</p>
+                  <h3>Success score distribution</h3>
+                </div>
+                <p>
+                  Compare score spread for free-to-play and paid games.
+                </p>
+              </div>
+              <div id="distribution-chart" class="chart-surface"></div>
+            </article>
+
+            <article class="chart-card genre-rank-card">
+              <div class="chart-header">
+                <div>
+                  <p class="eyebrow">Genre profile</p>
+                  <h3>Top genres by average success</h3>
+                </div>
+                <p>
+                  Average success score for represented genres. Click to pin.
+                </p>
+              </div>
+              <div id="genre-rank-chart" class="chart-surface"></div>
+            </article>
+          </div>
+
+        </div>
+      </main>
+    </div>
+
+    <div id="tooltip" class="tooltip" aria-hidden="true"></div>
+
+    <!-- About Project Modal Overlay -->
+    <div id="about-modal" class="modal-overlay" aria-hidden="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>About the Project</h2>
+          <button id="close-modal" class="close-button" aria-label="Close modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <section class="about-section">
+            <h3>Project Overview</h3>
+            <p>
+              This dashboard is an interactive Information Visualization system designed to explore the drivers of success in the Steam gaming market. By providing seven dynamic, coordinated visualization panels (including price scatter plots, genre price-tier heatmaps, release timelines, tag clusters, and business model comparisons), the tool enables users to uncover how price, genre, player engagement, and reception influence a game's market viability.
+            </p>
+          </section>
+
+          <section class="about-section">
+            <h3>How Success is Measured</h3>
+            <p>
+              Rather than using a static definition of success, the dashboard implements a customizable success score that combines three core dimensions:
+            </p>
+            <ul>
+              <li><strong>Ownership:</strong> The estimated owner count of the game (log-normalized to handle the scale difference between small indie projects and viral hits).</li>
+              <li><strong>Reception:</strong> The ratio of positive user reviews, smoothed using a phantom-review method so that games with very few reviews do not skew findings.</li>
+              <li><strong>Engagement:</strong> The median playtime recorded for the game's users (log-normalized).</li>
+            </ul>
+            <p class="formula-note">
+              Success Score = (α × Ownership + β × Review Ratio + γ × Playtime) / (α + β + γ)
+            </p>
+            <p>
+              Adjusting the weights (α, β, γ) in the weights card dynamically updates the success scores of all games and immediately refreshes every visualization across the dashboard.
+            </p>
+          </section>
+
+          <section class="about-section">
+            <h3>Educational Context</h3>
+            <p>
+              This project was developed for the <strong>Information Visualization (VU)</strong> course in the <strong>2026S</strong> semester at the <strong>TU Wien</strong> (Vienna University of Technology).
+            </p>
+            <p>
+              Aligned with the academic curriculum, the application focuses on demonstrating advanced visualization principles: multiple coordinated views (MCV), interactive brushing and linking, clean and distinguishable visual encodings, and robust preprocessing of real-world datasets.
+            </p>
+          </section>
+        </div>
+        <div class="modal-footer">
+          <button id="about-close-btn" class="footer-close-btn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InfoVis Assignment 2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <main class="page-shell">
+        <header class="page-header">
+            <p class="eyebrow">Exercise 2</p>
+            <h1>Coordinated Agricultural & Rural Development Explorer</h1>
+            <p class="lede">
+                Explore cross-country similarity with PCA, compare indicator values on the choropleth,
+                and inspect change over time with linked temporal views.
+            </p>
+        </header>
+
+        <section class="control-panel">
+            <label class="control">
+                <span>Indicator</span>
+                <select id="indicator-select"></select>
+            </label>
+
+            <label class="control control-slider">
+                <span>Year</span>
+                <input id="year-slider" type="range">
+                <strong id="year-value">2020</strong>
+            </label>
+
+            <div class="selection-panel">
+                <div class="selection-summary" id="selection-summary"></div>
+                <button id="clear-brush" class="control-button" type="button">Clear brush</button>
+            </div>
+        </section>
+
+        <section class="dashboard-grid">
+            <article class="chart-card">
+                <div class="chart-header">
+                    <div>
+                        <h2>PCA Scatterplot</h2>
+                        <p id="scatterplot-subtitle"></p>
+                    </div>
+                </div>
+                <div id="scatterplot" class="chart-host"></div>
+            </article>
+
+            <article class="chart-card chart-card--wide">
+                <div class="chart-header">
+                    <div>
+                        <h2>World Choropleth</h2>
+                        <p id="choropleth-subtitle"></p>
+                    </div>
+                </div>
+                <div id="choropleth" class="chart-host"></div>
+            </article>
+
+            <article class="chart-card chart-card--full">
+                <div class="chart-header">
+                    <div>
+                        <h2>Indicator Time Series</h2>
+                        <p id="timeseries-subtitle"></p>
+                    </div>
+                </div>
+                <div id="timeseries" class="chart-host"></div>
+            </article>
+        </section>
+    </main>
+
+    <script id="app-bootstrap" type="application/json">{{ {
+        'data': data,
+        'pcaData': pca_data,
+        'indicators': indicators,
+        'years': years,
+        'latestYear': latest_year
+    } | tojson }}</script>
+
+    <script src="{{ url_for('static', filename='js/state.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/scatterplot.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/choropleth.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/timeseries.js') }}"></script>
+
+</body>
+</html>
