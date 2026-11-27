@@ -1,0 +1,33 @@
+# Team registration for CLEF CheckThat! 2026 — Task 1
+# Fill in all fields, then run: python validate_team.py
+
+# Must exactly match the name under which you registered for CLEF CheckThat! Task 1
+team_name = "AIR-M3-G1"
+
+# Your assigned track number (1–5)
+track = 3
+
+[[members]]
+name = "Zixuan Sun Sun"
+immatriculation_number = "12551596"
+github_username = "Zissue"
+
+[[members]]
+name = "Muhammad Bilal Hussain"
+immatriculation_number = "12442081"
+github_username = "Bilalsuppal"
+
+[[members]]
+name = "Muhammad Mohsin Yasin"
+immatriculation_number = "12345037"
+github_username = "mohsinyasin55"
+
+[[members]]
+name = "Ekin Keskin"
+immatriculation_number = "12551215"
+github_username = "ekinkeskin"
+
+[[members]]
+name = "Cam Le"
+immatriculation_number = "12551211"
+github_username = "CamDucLe"
