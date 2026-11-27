@@ -1,0 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+.env/
+env/
+venv/
+ENV/
+
+# Python packaging & deployment artifacts
+lambda.zip
+/src/lambdas/*/package/
+/src/lambdas/*/package/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS metadata
+.DS_Store
+Thumbs.db

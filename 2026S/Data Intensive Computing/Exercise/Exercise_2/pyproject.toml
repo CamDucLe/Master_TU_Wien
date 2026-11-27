@@ -1,0 +1,18 @@
+[project]
+name = "assignment-2"
+version = "0.1.0"
+description = "Add your description here"
+readme = "docs/README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "mrjob",
+    "mr3px",
+    "six",
+    "pip",
+    "setuptools",
+    "pandas",
+    "pyspark",
+]
+
+[dependency-groups]
+dev = []

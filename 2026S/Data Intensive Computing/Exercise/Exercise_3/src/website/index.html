@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Serverless review analysis</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65"
+        crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.2/font/bootstrap-icons.css"
+        rel="stylesheet">
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+</head>
+<body>
+
+<div class="container-fluid">
+  <div class="row">
+    <aside class="col-lg-4 col-xl-3 p-3 border-end">
+      <header class="d-flex align-items-center pb-2 mb-3 border-bottom">
+        <a href="/" class="d-flex align-items-center text-dark text-decoration-none">
+          <span class="fs-5"><i class="bi bi-chat-square-text fs-4"></i> Serverless review analysis</span>
+        </a>
+      </header>
+
+      <section>
+        <div class="card">
+          <div class="card-header">
+            <i class="bi bi-gear"></i> Configuration
+          </div>
+          <div class="card-body py-3">
+            <h5 class="card-text small">
+              Set the Lambda Function URLs here
+            </h5>
+            <form id="configForm" action="#" method="post">
+              <div class="mb-2">
+                <label class="form-label" for="functionUrlPresign">
+                  Function URL of the <code>presign</code> Lambda
+                </label>
+                <input type="text" class="form-control" id="functionUrlPresign" autocomplete="false"/>
+              </div>
+              <div class="mb-2">
+                <label class="form-label" for="functionUrlList">
+                  Function URL of the <code>list</code> Lambda
+                </label>
+                <input type="text" class="form-control" id="functionUrlList" autocomplete="false"/>
+              </div>
+              <div class="mb-2">
+                <button type="submit" name="load" class="btn btn-primary btn-sm mb-2">Load from API</button>
+                <button type="submit" name="save" class="btn btn-primary btn-sm mb-2">Apply</button>
+                <button type="submit" name="clear" class="btn btn-secondary btn-sm mb-2">Clear</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <footer class="pt-3 mt-3 text-muted border-top small">
+        Adapted for MiniStack - &copy; 2026
+      </footer>
+    </aside>
+
+    <main class="col-lg-8 col-xl-9 p-3">
+      <section class="mt-3">
+        <div class="row">
+          <div class="col">
+            <h1 class="h4">Review analytics <i class="bi bi-bar-chart"></i></h1>
+          </div>
+          <div class="col text-align-right">
+            <button class="btn btn-primary" style="float: right" id="updateStatsButton">Refresh</button>
+          </div>
+        </div>
+        <p class="mt-2">
+          The aggregated review results are shown here. When refresh is triggered, the browser calls the
+          <code>list</code> Lambda URL and renders the current sentiment, profanity, and banned-user counts.
+        </p>
+        <hr class="my-2">
+        <div id="statsContainer"></div>
+      </section>
+
+      <section class="mt-3">
+        <h1 class="h4">Upload a customer review <i class="bi bi-cloud-upload"></i></h1>
+        <hr class="my-2">
+        <div class="card">
+          <div class="card-header">
+            Input
+          </div>
+          <div class="card-body py-3">
+            <h5 class="card-title">Review form</h5>
+            <p class="card-text small">
+              This form calls the <code>presign</code> Lambda to request a S3 pre-signed POST URL,
+              and then uploads one JSON review directly to S3. The review pipeline is triggered asynchronously
+              through S3 bucket notifications.
+            </p>
+            <form id="uploadForm" action="#" method="post">
+              <div class="mb-2">
+                <label class="form-label" for="reviewerID">Reviewer ID</label>
+                <input type="text" class="form-control" id="reviewerID" placeholder="A123456789" required/>
+              </div>
+              <div class="mb-2">
+                <label class="form-label" for="overall">Overall rating</label>
+                <select class="form-select" id="overall" required>
+                  <option value="5">5 - Very positive</option>
+                  <option value="4">4 - Positive</option>
+                  <option value="3">3 - Neutral</option>
+                  <option value="2">2 - Negative</option>
+                  <option value="1">1 - Very negative</option>
+                </select>
+              </div>
+              <div class="mb-2">
+                <label class="form-label" for="summary">Summary</label>
+                <input type="text" class="form-control" id="summary" placeholder="Short review summary" required/>
+              </div>
+              <div class="mb-2">
+                <label class="form-label" for="reviewText">Review text</label>
+                <textarea class="form-control" id="reviewText" rows="3" placeholder="Write the full review here" required></textarea>
+              </div>
+              <div class="mb-2">
+                <button type="submit" class="btn btn-primary btn-sm mb-2">
+                  Upload <i class="bi bi-cloud-upload-fill"></i>
+                </button>
+              </div>
+              <div id="uploadStatus" class="alert d-none" role="alert"></div>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script id="stats-template" type="text/x-handlebars-template">
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">Total reviews</div>
+        <div class="card-body py-3"><p class="h2 mb-0">{{total_reviews}}</p></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">Positive</div>
+        <div class="card-body py-3"><p class="h2 mb-0 text-success">{{positive}}</p></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">Neutral</div>
+        <div class="card-body py-3"><p class="h2 mb-0 text-secondary">{{neutral}}</p></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">Negative</div>
+        <div class="card-body py-3"><p class="h2 mb-0 text-danger">{{negative}}</p></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">Profanity detected</div>
+        <div class="card-body py-3"><p class="h2 mb-0 text-warning">{{profane_count}}</p></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">Banned users</div>
+        <div class="card-body py-3">
+          {{#if banned_users.length}}
+            <ul class="mb-0">
+              {{#each banned_users}}<li><code>{{this}}</code></li>{{/each}}
+            </ul>
+          {{else}}
+            <p class="text-muted mb-0">No banned users yet.</p>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+  </div>
+</script>
+
+<script src="https://code.jquery.com/jquery-3.6.1.min.js"
+        integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ="
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.7/handlebars.min.js"
+        crossorigin="anonymous"></script>
+<script src="app.js"></script>
+</body>
+</html>

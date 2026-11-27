@@ -1,0 +1,62 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+\setlist[itemize]{leftmargin=1.2em}
+
+\title{Execution Instructions for the Serverless Customer Review Analysis AI Platform}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Project Layout}
+The application code lives in the \texttt{src/} directory.
+
+\section*{Local Execution}
+\begin{enumerate}
+  \item Create and activate a virtual environment:
+  \begin{verbatim}
+cd src
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+  \end{verbatim}
+
+  \item Start MiniStack or LocalStack on port \texttt{4566}.
+  \begin{verbatim}
+ministack
+  \end{verbatim}
+
+  \item Deploy the infrastructure:
+  \begin{verbatim}
+cd src
+source .venv/bin/activate
+bash ./run.sh
+  \end{verbatim}
+
+  \item Run the integration tests:
+  \begin{verbatim}
+pytest tests/
+  \end{verbatim}
+
+  \item Open the web frontend:
+  \begin{verbatim}
+http://localhost:4566/webapp/index.html
+  \end{verbatim}
+
+  \item Note: Remember to set the Lambda Function URLs when interacting with the web frontend.
+\end{enumerate}
+
+\section*{Load the Devset}
+Use the helper script to upload the review devset and print aggregated results (you can see the results in the web frontend as well):
+\begin{verbatim}
+cd src
+python3 load_devset.py --devset data/reviews_devset.json
+  \end{verbatim}
+
+\section*{LBD Cluster}
+Set \texttt{ON\_LBD\_PROXY=1} in \texttt{src/run.sh} and then run the script normally.
+
+\end{document}
