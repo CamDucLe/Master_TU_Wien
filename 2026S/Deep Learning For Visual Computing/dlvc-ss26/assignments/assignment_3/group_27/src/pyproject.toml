@@ -1,0 +1,21 @@
+[project]
+name = "assignment-3"
+version = "0.1.0"
+description = "Compare VLM vs YOLO"
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = [
+    "numpy",
+    "torch",
+    "torchvision",
+    "matplotlib",
+    "tqdm",
+    "transformers==4.57.1",
+    "pillow",
+    "ultralytics",
+    "decord==0.6.0",
+    "lmdb==1.7.5",
+    "peft",
+    "opencv-python-headless==4.11.0.86",
+]
