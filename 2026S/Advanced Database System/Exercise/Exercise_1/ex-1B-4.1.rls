@@ -1,0 +1,38 @@
+% Employee Database Dataset
+% Data imported via CSV resources
+@import employee :- csv{resource = "https://dbai.tuwien.ac.at/adbs/datalog/data/employees/employees.csv", format=(int,string,string,string,int,int,int)} .
+@import department :- csv{resource = "https://dbai.tuwien.ac.at/adbs/datalog/data/employees/departments.csv", format=(int,string,int,string)} .
+
+% employee(emp_id, first_name, last_name, job_id, salary, manager_id, dept_id),
+% department(dept_id,name,manager_id,location)
+
+% === Add your rules below ===
+%% Get to know data
+@output employee.
+@output department.
+
+%% Program
+managers(?manager_id) :- employee(_, _, _, _, _, ?manager_id, _).
+@output managers.
+
+department_heads(?manager_id) :-department(_, _, ?manager_id, _).
+@output department_heads.
+
+non_department_heads(?id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?dept_id) :-
+  employee(?id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?dept_id),
+  managers(?id),
+  ~department_heads(?id).
+@output non_department_heads.
+
+executive_department(?dept_id) :- department(?dept_id, "Executive", _, _).
+@output executive_department.
+
+managers_executive_department(?manager_id) :-
+  employee(?id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?dept_id),
+  executive_department(?dept_id).
+@output managers_executive_department.
+
+result(?id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?dept_id) :-
+  non_department_heads(?id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?dept_id),
+  ~ managers_executive_department(?id).
+@output result.

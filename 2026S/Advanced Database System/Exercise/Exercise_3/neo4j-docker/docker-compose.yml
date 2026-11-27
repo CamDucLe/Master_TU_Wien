@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  adbs-neo4j:
+    image: neo4j:5.19.0
+    ports:
+      - 7687:7687
+      - 7474:7474
+    environment:
+      - NEO4J_AUTH=neo4j/neo4jneo4j
+    volumes:
+      - ./plugins:/plugins
+      - ./rdf-data:/rdf-data
+  setup-db:
+    image: neo4j:5.19.0 # the neo4j image includes the cypher CLI utility
+    depends_on:
+      - adbs-neo4j
+    volumes:
+      - ./rdf-data:/rdf-data
+      - ./setup.sh:/setup.sh
+      - ./wait-for-it.sh:/wait-for-it.sh
+    entrypoint: ["bash", "-c", "/wait-for-it.sh -t 360 adbs-neo4j:7687 -- sh -c /setup.sh"]
+
